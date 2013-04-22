@@ -40,17 +40,17 @@ dbg(__METHOD__);
 dbg(__METHOD__);
     if ($i) {
       $d = $n->get($i);
-      $d['updated'] = compare_dates(strtotime($d['updated']));
+      $d['updated'] = now(strtotime($d['updated']));
       $tmp = array_merge($d, [
         'update' => sef('/?a=update&i='.$i),
         'delete' => sef('/?a=delete&i='.$i)
       ]);
       return tpl('tpl-item.php', $tmp);
     } else {
-      $buf = pager($n);
+      $buf = nav($n);
       try {
         foreach($n->getAll($p) as $d) {
-          $d['updated'] = compare_dates(strtotime($d['updated']));
+          $d['updated'] = now(strtotime($d['updated']));
           $tmp = array_merge($d, [
             'update' => sef('/?a=update&i='.$d['id']),
             'delete' => sef('/?a=delete&i='.$d['id'])
@@ -126,15 +126,15 @@ dbg(__METHOD__);
     return isset($stash[$k]) ? $stash[$k] : NULL;
   }
 
-  function sef($l)
+  function sef($url)
   {
 dbg(__METHOD__);
     return cfg('sefurl')
-      ? preg_replace('/[\&].=/', '/', preg_replace('/[\?].=/', '', $l))
-      : $l;
+      ? preg_replace('/[\&].=/', '/', preg_replace('/[\?].=/', '', $url))
+      : $url;
   }
 
-  function pager($n)
+  function nav($n)
   {
 dbg(__METHOD__);
     $buf = '
@@ -173,33 +173,31 @@ Execution time: '.(microtime(true) - $_SERVER['REQUEST_TIME_FLOAT']).'
 </pre>';
   }
 
-  function compare_dates($date1, $date2=NULL)
+  function now($date1, $date2=NULL)
   {
 dbg(__METHOD__);
     $date2 = $date2 ? $date2 : time();
-
-    $blocks = array(
-      array('name'=>'year', 'amount' => 60*60*24*365),
-      array('name'=>'month','amount' => 60*60*24*31),
-      array('name'=>'week', 'amount' => 60*60*24*7),
-      array('name'=>'day',  'amount' => 60*60*24),
-      array('name'=>'hour', 'amount' => 60*60),
-      array('name'=>'min',  'amount' => 60),
-      array('name'=>'sec',  'amount' => 1)
-    );
-
     $diff = abs($date1 - $date2);
     if ($diff < 10) return ' just now';
+    $blocks = [
+      ['k'=>'year', 'v' => 31536000],
+      ['k'=>'month','v' => 2678400],
+      ['k'=>'week', 'v' => 604800],
+      ['k'=>'day',  'v' => 86400],
+      ['k'=>'hour', 'v' => 3600],
+      ['k'=>'min',  'v' => 60],
+      ['k'=>'sec',  'v' => 1]
+    ];
     $levels = 2;
     $current_level = 1;
     $result = array();
     foreach($blocks as $block) {
       if ($current_level > $levels) break;
-      if ($diff/$block['amount'] >= 1) {
-        $amount = floor($diff / $block['amount']);
+      if ($diff/$block['v'] >= 1) {
+        $amount = floor($diff / $block['v']);
         $plural = ($amount > 1) ? 's' : '';
-        $result[] = $amount.' '.$block['name'].$plural;
-        $diff -= $amount * $block['amount'];
+        $result[] = $amount.' '.$block['k'].$plural;
+        $diff -= $amount * $block['v'];
         $current_level++;
       }
     }
